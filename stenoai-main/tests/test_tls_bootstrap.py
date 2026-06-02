@@ -59,7 +59,16 @@ class TlsBootstrapTests(unittest.TestCase):
         self.assertEqual(os.environ["SSL_CERT_FILE"], certifi.where())
         self.assertEqual(os.environ["REQUESTS_CA_BUNDLE"], certifi.where())
         self.assertTrue(os.path.isfile(os.environ["SSL_CERT_FILE"]))
+    def test_configure_does_not_override_a_user_set_value(self):
+        # If the user has explicitly set SSL_CERT_FILE or REQUESTS_CA_BUNDLE to
+        # something, the bootstrap should respect that and not override it.
+        os.environ["SSL_CERT_FILE"] = "/custom/cert.pem"
+        os.environ["REQUESTS_CA_BUNDLE"] = "/custom/cert.pem"
 
+        self._reimport()
+
+        self.assertEqual(os.environ["SSL_CERT_FILE"], "/custom/cert.pem")
+        self.assertEqual(os.environ["REQUESTS_CA_BUNDLE"], "/custom/cert.pem")
     def test_configure_overrides_a_broken_inherited_value(self):
         # The customer's bundle effectively starts with a broken cert path
         # (the compiled-in OPENSSLDIR). The bootstrap must replace it, not
