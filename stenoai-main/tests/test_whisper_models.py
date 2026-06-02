@@ -51,7 +51,17 @@ class DownloadWithProgressTests(unittest.TestCase):
             # Emits a single 100% so the renderer's progress map flushes to
             # complete, even though no network call happened.
             callback.assert_called_once_with(100, 3, 3)
-
+    def test_short_circuits_and_does_not_call_progress_when_file_exists_and_size_unknown(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            existing = Path(tmp_dir) / "ggml-small.bin"
+            existing.write_bytes(b"abc")
+            callback = MagicMock()
+            with patch.object(whisper_models, "get_models_dir", return_value=Path(tmp_dir)):
+                ok = whisper_models.download_with_progress("small", callback)
+            self.assertTrue(ok)
+            # Emits a single 100% so the renderer's progress map flushes to
+            # complete, even though no network call happened.
+            callback.assert_called_once_with(100, 3, None)
     def test_writes_bytes_and_renames_part_on_success(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             chunks = [b"abcd", b"efgh", b"ijkl"]

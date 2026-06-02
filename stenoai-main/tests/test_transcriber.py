@@ -33,6 +33,20 @@ class WhisperTranscriberAutoLanguageTests(unittest.TestCase):
         self.assertEqual(result["detected_language"], "nl")
         self.assertEqual(model.transcribe.call_args.kwargs.get("language"), "nl")
 
+    def test_auto_mode_falls_back_when_detection_uncertain(self):
+        model = Mock()
+        model.auto_detect_language.return_value = (("nl", 0.4), {"nl": 0.4, "en": 0.35})
+        segment = Mock()
+        # transcribe_diarised needs numeric t0/t1 (centiseconds) to build
+        # the per-segment timing array — Mock auto-attribute returns aren't
+        # numeric and would TypeError on division.
+        segment.t0 = 0
+        segment.t1 = 100
+        segment.text = " Hello "
+        model.transcribe.return_value = [segment]
+
+        transcriber = self._build_transcriber(model)
+        result
     def test_auto_mode_falls_back_when_detection_fails(self):
         model = Mock()
         model.auto_detect_language.side_effect = RuntimeError("detection failed")
