@@ -294,24 +294,34 @@ class OllamaSummarizer:
     #         logger.error(f"Error ensuring model availability: {e}")
     #         return False
     
-    def _ensure_ollama_ready(self) -> bool:
-        """Ensure Ollama service is running and model is available."""
-        logger.info("Checking Ollama service...")
+    # def _ensure_ollama_ready(self) -> bool:
+    #     """Ensure Ollama service is running and model is available."""
+    #     logger.info("Checking Ollama service...")
         
-        # Step 1: Check if Ollama is running
+    #     # Step 1: Check if Ollama is running
+    #     if not self._is_ollama_running():
+    #         if not self._start_ollama_service():
+    #             raise Exception("Failed to start Ollama service")
+    #     else:
+    #         logger.info("Ollama service is already running")
+        
+    #     # Step 2: Ensure model is available
+    #     if not self._ensure_model_available():
+    #         raise Exception(f"Failed to ensure model {self.model_name} is available")
+        
+    #     logger.info(f"Ollama ready with model {self.model_name}")
+    #     return True
+        # Note: The above method is commented out because we're now relying on the
+    def _ensure_ollama_ready(self) -> None:
+        """Ensure Ollama service is running. Model availability is handled by the user/admin."""
+        logger.info("Checking if Ollama service is running...")
         if not self._is_ollama_running():
+            logger.info("Ollama is not running, attempting to start it...")
             if not self._start_ollama_service():
                 raise Exception("Failed to start Ollama service")
         else:
             logger.info("Ollama service is already running")
-        
-        # Step 2: Ensure model is available
-        if not self._ensure_model_available():
-            raise Exception(f"Failed to ensure model {self.model_name} is available")
-        
-        logger.info(f"Ollama ready with model {self.model_name}")
-        return True
-        
+            
     def _cloud_chat(self, prompt: str, timeout_seconds: int = 300) -> str:
         """
         Send a chat request via the configured cloud API (OpenAI or Anthropic).
