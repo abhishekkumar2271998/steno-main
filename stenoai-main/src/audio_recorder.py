@@ -17,17 +17,17 @@ import json
 
 logger = logging.getLogger(__name__)
 
-# Global cleanup to prevent resource leaks
-def cleanup_sounddevice():
-    """Clean up sounddevice resources on exit"""
-    try:
-        if sd is not None:
-            sd._terminate()
-    except (AttributeError, RuntimeError, Exception) as e:
-        # Log but don't raise - this is cleanup code
-        logger.debug(f"Error during sounddevice cleanup: {e}")
+# # Global cleanup to prevent resource leaks
+# def cleanup_sounddevice():
+#     """Clean up sounddevice resources on exit"""
+#     try:
+#         if sd is not None:
+#             sd._terminate()
+#     except (AttributeError, RuntimeError, Exception) as e:
+#         # Log but don't raise - this is cleanup code
+#         logger.debug(f"Error during sounddevice cleanup: {e}")
 
-atexit.register(cleanup_sounddevice)
+# atexit.register(cleanup_sounddevice)
 
 
 class AudioRecorder:
