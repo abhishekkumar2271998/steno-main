@@ -223,22 +223,22 @@ class AudioRecorder:
             total_frames = sum(len(chunk) for chunk in self.audio_data)
         return total_frames / self.sample_rate
         
-    def is_recording(self) -> bool:
-        """Check if currently recording."""
-        return self.recording
+    # def is_recording(self) -> bool:
+    #     """Check if currently recording."""
+    #     return self.recording
     
-    def __del__(self):
-        """Cleanup resources when instance is destroyed."""
-        try:
-            if self.recording:
-                self.stop_recording()
-            if self.stream:
-                try:
-                    self.stream.stop()
-                    self.stream.close()
-                except (AttributeError, RuntimeError, Exception) as e:
-                    logger.debug(f"Error closing stream in __del__: {e}")
-            if self.recording_thread and self.recording_thread.is_alive():
-                self.recording_thread.join(timeout=1.0)
-        except (AttributeError, RuntimeError, Exception) as e:
-            logger.debug(f"Error in __del__: {e}")
+    # def __del__(self):
+    #     """Cleanup resources when instance is destroyed."""
+    #     try:
+    #         if self.recording:
+    #             self.stop_recording()
+    #         if self.stream:
+    #             try:
+    #                 self.stream.stop()
+    #                 self.stream.close()
+    #             except (AttributeError, RuntimeError, Exception) as e:
+    #                 logger.debug(f"Error closing stream in __del__: {e}")
+    #         if self.recording_thread and self.recording_thread.is_alive():
+    #             self.recording_thread.join(timeout=1.0)
+    #     except (AttributeError, RuntimeError, Exception) as e:
+    #         logger.debug(f"Error in __del__: {e}")
