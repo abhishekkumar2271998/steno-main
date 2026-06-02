@@ -126,6 +126,11 @@ class OllamaSummarizer:
         logger.error("Ollama executable not found")
         return None
     
+    def _stop_ollama_service(self) -> None:
+        """Stop the Ollama service if it was started by this app."""
+        logger.info("Stopping Ollama service...")
+        ollama_manager.stop_ollama_server()
+    
     def _start_ollama_service(self) -> bool:
         """Start the Ollama service if not running."""
         logger.info("Starting Ollama service...")
