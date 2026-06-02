@@ -51,7 +51,12 @@ class DownloadWithProgressTests(unittest.TestCase):
             # Emits a single 100% so the renderer's progress map flushes to
             # complete, even though no network call happened.
             callback.assert_called_once_with(100, 3, 3)
-
+def test_downloads_and_writes_file(self):        
+    with tempfile.TemporaryDirectory() as tmp_dir:
+            chunks = [b"abcd", b"efgh", b"ijkl"]
+            total_bytes = sum(len(c) for c in chunks)        
+            fake_response = MagicMock()
+    
     def test_writes_bytes_and_renames_part_on_success(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             chunks = [b"abcd", b"efgh", b"ijkl"]
