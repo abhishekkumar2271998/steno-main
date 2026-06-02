@@ -10,11 +10,14 @@ Covers:
 """
 
 import math
+import os
 import struct
 import tempfile
 import unittest
 import wave
 from pathlib import Path
+
+import certifi
 
 from src.transcriber import (
     BLEED_JACCARD_THRESHOLD,
@@ -53,21 +56,45 @@ class TokenJaccardTests(unittest.TestCase):
         mic = (
             "popping up I think it was originally Alexandria of liberal groups "
             "liberal opponents to the Muslim Brother liberal secular Egyptians ")
-        
-class TokenJaccardTests(unittest.TestCase):
-    def test_identical_strings_score_one(self):
-        self.assertEqual(_token_jaccard("hello world", "hello world"), 1.0)
 
-    def test_disjoint_strings_score_zero(self):
-        self.assertEqual(
-            _token_jaccard("hi can you hear me", "trump has said many outrageous things"),
-            0.0,
+class FfmpegStderrParseTests(unittest.TestCase):
+    STEREO_OPUS = """\
+Input #0, matroska,webm, from '/tmp/sample.webm':
+  Metadata:
+    encoder         : Chrome
+  Duration: 00:00:28.62, start: -0.007000, bitrate: 128 kb/s
+  Stream #0:0(eng): Audio: opus, 48000 Hz, stereo, fltp (default)
+"""
+    MONO_WAV = """\
+Input #0, wav, from '/tmp/sample.wav':
+  Duration: 00:01:05.40, bitrate: 256 kb/s
+  Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s
+"""
+    SIX_CHANNEL = """\
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/sample.m4a':
+  Duration: 02:34:12.10, start: 0.000000, bitrate: 384 kb/s
+  Stream #0:0: Audio: aac (LC), 4800０ Hz, 6 channels, fltp, 384 kb/s
+"""
+    GIBBERISH = "ffmpeg version 7.1.1\nbuilt with Apple clang...\n"
+
+    def test_parses_stereo(self):
+        self.assertEqual(_parse_channels_from_ffmpeg_stderr(self.STEREO_OPUS), 2)
+
+    def test_parses_mono(self):
+        self.assertEqual(_parse_channels_from_ffmpeg_stderr(self.MONO_WAV), 1)
+
+    def test_parses_six_channel(self):
+        self.assertEqual(_parse_channels_from_ffmpeg_stderr(self.SIX_CHANNEL), 6)
+
+    def test_returns_none_on_no_audio_stream(self):
+        self.assertIsNone(_parse_channels_from_ffmpeg_stderr(self.GIBBERISH))
+
+    def test_parses_short_duration(self):
+        self.assertAlmostEqual(
+            _parse_duration_from_ffmpeg_stderr(self.STEREO_OPUS),
+            28.62,
+            places=2,
         )
-
-    def test_empty_inputs_return_zero(self):
-        self.assertEqual(_token_jaccard("", "anything"), 0.0)
-        self.assertEqual(_token_jaccard("anything", ""), 0.0)
-        self.assertEqual(_token_jaccard("", ""), 0.0)
 
     def test_case_and_whitespace_insensitive(self):
         self.assertEqual(
@@ -98,6 +125,33 @@ class TokenJaccardTests(unittest.TestCase):
         similarity = _token_jaccard(mic, system)
         self.assertLess(similarity, BLEED_JACCARD_THRESHOLD)
 
+class TlsBootstrapTests(unittest.TestCase):
+    def setUp(self):
+        self._saved_env = {
+            k: os.environ.get(k)
+            for k in ("SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE")
+        }
+
+    def tearDown(self):
+        for k, v in self._saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def _reimport(self):
+        sys.modules.pop("src.tls_bootstrap", None)
+        return importlib.import_module("src.tls_bootstrap")
+
+    def test_configure_points_ssl_cert_file_at_certifi_bundle(self):
+        os.environ.pop("SSL_CERT_FILE", None)
+        os.environ.pop("REQUESTS_CA_BUNDLE", None)
+
+        self._reimport()
+
+        self.assertEqual(os.environ["SSL_CERT_FILE"], certifi.where())
+        self.assertEqual(os.environ["REQUESTS_CA_BUNDLE"], certifi.where())
+        self.assertTrue(os.path.isfile(os.environ["SSL_CERT_FILE"]))
 
 class FfmpegStderrParseTests(unittest.TestCase):
     STEREO_OPUS = """\
