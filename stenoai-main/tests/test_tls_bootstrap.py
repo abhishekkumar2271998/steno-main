@@ -59,7 +59,16 @@ class TlsBootstrapTests(unittest.TestCase):
         self.assertEqual(os.environ["SSL_CERT_FILE"], certifi.where())
         self.assertEqual(os.environ["REQUESTS_CA_BUNDLE"], certifi.where())
         self.assertTrue(os.path.isfile(os.environ["SSL_CERT_FILE"]))
+    def test_configure_does_not_override_a_user_set_value(self):
+        # If the user has explicitly set SSL_CERT_FILE or REQUESTS_CA_BUNDLE to
+        # something, the bootstrap should respect that and not override it.
+        os.environ["SSL_CERT_FILE"] = "/custom/cert.pem"
+        os.environ["REQUESTS_CA_BUNDLE"] = "/custom/cert.pem"
 
+        self._reimport()
+
+        self.assertEqual(os.environ["SSL_CERT_FILE"], "/custom/cert.pem")
+        self.assertEqual(os.environ["REQUESTS_CA_BUNDLE"], "/custom/cert.pem")
     def test_configure_overrides_a_broken_inherited_value(self):
         # The customer's bundle effectively starts with a broken cert path
         # (the compiled-in OPENSSLDIR). The bootstrap must replace it, not
@@ -105,6 +114,21 @@ class TlsBootstrapTests(unittest.TestCase):
         self.assertEqual(before, 0, "expected the broken-env context to load zero CAs")
         self.assertGreater(after, 100, "expected certifi's CAs to be loaded after bootstrap")
 
+def test_bootstrap_idempotent(self):
+    # Running the bootstrap multiple times should have no effect after the first
+    # time, and in particular shouldn't mess with the env vars it sets.
+    os.environ.pop("SSL_CERT_FILE", None)
+    os.environ.pop("REQUESTS_CA_BUNDLE", None)
 
+    self._reimport()
+    first_ssl_cert_file = os.environ["SSL_CERT_FILE"]
+    first_requests_ca_bundle = os.environ["REQUESTS_CA_BUNDLE"]
+
+    self._reimport()
+    second_ssl_cert_file = os.environ["SSL_CERT_FILE"]
+    second_requests_ca_bundle = os.environ["REQUESTS_CA_BUNDLE"]
+
+    self.assertEqual(first_ssl_cert_file, second_ssl_cert_file)
+    self.assertEqual(first_requests_ca_bundle, second_requests_ca_bundle)   
 if __name__ == "__main__":
     unittest.main()
