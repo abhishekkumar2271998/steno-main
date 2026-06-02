@@ -151,7 +151,8 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/sample.m4a':
 
     def test_returns_none_when_no_duration(self):
         self.assertIsNone(_parse_duration_from_ffmpeg_stderr(self.GIBBERISH))
-
+def test_returns_none_on_no_audio_stream(self):
+        self.assertIsNone(_parse_channels_from_ffmpeg_stderr(self.GIBBERISH))
 
 def _write_wav_with_segments(path: Path, segments) -> None:
     """Write a 16 kHz mono WAV. `segments` is [(seconds_silent_or_loud, kind), ...]
