@@ -126,6 +126,11 @@ class OllamaSummarizer:
         logger.error("Ollama executable not found")
         return None
     
+    def _stop_ollama_service(self) -> None:
+        """Stop the Ollama service if it was started by this app."""
+        logger.info("Stopping Ollama service...")
+        ollama_manager.stop_ollama_server()
+    
     def _start_ollama_service(self) -> bool:
         """Start the Ollama service if not running."""
         logger.info("Starting Ollama service...")
@@ -174,144 +179,154 @@ class OllamaSummarizer:
             logger.error(f"JSON repair failed: {e}")
             return None
     
-    def _create_enhanced_fallback(self, malformed_response: str, transcript: str, duration_minutes: int) -> MeetingTranscript:
-        """
-        Create an enhanced fallback summary by extracting whatever data we can.
+    # def _create_enhanced_fallback(self, malformed_response: str, transcript: str, duration_minutes: int) -> MeetingTranscript:
+    #     """
+    #     Create an enhanced fallback summary by extracting whatever data we can.
         
-        Args:
-            malformed_response: The malformed JSON response from Ollama
-            transcript: Original transcript
-            duration_minutes: Meeting duration
+    #     Args:
+    #         malformed_response: The malformed JSON response from Ollama
+    #         transcript: Original transcript
+    #         duration_minutes: Meeting duration
             
-        Returns:
-            MeetingTranscript with extracted data
-        """
-        logger.info("Creating enhanced fallback summary...")
+    #     Returns:
+    #         MeetingTranscript with extracted data
+    #     """
+    #     logger.info("Creating enhanced fallback summary...")
         
-        # Try to extract useful information from malformed response
-        overview = "Meeting transcript was processed but JSON parsing failed."
-        participants = []
-        key_points = []
+    #     # Try to extract useful information from malformed response
+    #     overview = "Meeting transcript was processed but JSON parsing failed."
+    #     participants = []
+    #     key_points = []
         
-        try:
-            # Extract overview if present
-            if '"overview"' in malformed_response:
-                import re
-                overview_match = re.search(r'"overview":\s*"([^"]*)"', malformed_response)
-                if overview_match:
-                    overview = overview_match.group(1)
-                    logger.info("Extracted overview from malformed response")
+    #     try:
+    #         # Extract overview if present
+    #         if '"overview"' in malformed_response:
+    #             import re
+    #             overview_match = re.search(r'"overview":\s*"([^"]*)"', malformed_response)
+    #             if overview_match:
+    #                 overview = overview_match.group(1)
+    #                 logger.info("Extracted overview from malformed response")
             
-            # Extract participants if present
-            if '"participants"' in malformed_response:
-                # Try to find participant names between quotes
-                import re
-                participants_section = re.search(r'"participants":\s*\[(.*?)\]', malformed_response, re.DOTALL)
-                if participants_section:
-                    # Extract quoted strings
-                    quoted_names = re.findall(r'"([^"]+)"', participants_section.group(1))
-                    participants = quoted_names
-                    logger.info(f"Extracted {len(participants)} participants from malformed response")
+    #         # Extract participants if present
+    #         if '"participants"' in malformed_response:
+    #             # Try to find participant names between quotes
+    #             import re
+    #             participants_section = re.search(r'"participants":\s*\[(.*?)\]', malformed_response, re.DOTALL)
+    #             if participants_section:
+    #                 # Extract quoted strings
+    #                 quoted_names = re.findall(r'"([^"]+)"', participants_section.group(1))
+    #                 participants = quoted_names
+    #                 logger.info(f"Extracted {len(participants)} participants from malformed response")
             
-            # Extract key points if present
-            if '"key_points"' in malformed_response:
-                import re
-                key_points_section = re.search(r'"key_points":\s*\[(.*?)\]', malformed_response, re.DOTALL)
-                if key_points_section:
-                    # Extract quoted strings
-                    quoted_points = re.findall(r'"([^"]+)"', key_points_section.group(1))
-                    key_points = quoted_points
-                    logger.info(f"Extracted {len(key_points)} key points from malformed response")
+    #         # Extract key points if present
+    #         if '"key_points"' in malformed_response:
+    #             import re
+    #             key_points_section = re.search(r'"key_points":\s*\[(.*?)\]', malformed_response, re.DOTALL)
+    #             if key_points_section:
+    #                 # Extract quoted strings
+    #                 quoted_points = re.findall(r'"([^"]+)"', key_points_section.group(1))
+    #                 key_points = quoted_points
+    #                 logger.info(f"Extracted {len(key_points)} key points from malformed response")
             
-        except Exception as e:
-            logger.warning(f"Failed to extract data from malformed response: {e}")
+    #     except Exception as e:
+    #         logger.warning(f"Failed to extract data from malformed response: {e}")
         
-        # Create fallback summary with extracted data
-        fallback_summary = MeetingTranscript(
-            duration=f"{duration_minutes} minutes",
-            overview=overview,
-            participants=participants,
-            next_steps=[],  # Create empty action items since parsing failed
-            key_points=[],  # Create empty key points since parsing failed  
-            transcript=transcript
-        )
+    #     # Create fallback summary with extracted data
+    #     fallback_summary = MeetingTranscript(
+    #         duration=f"{duration_minutes} minutes",
+    #         overview=overview,
+    #         participants=participants,
+    #         next_steps=[],  # Create empty action items since parsing failed
+    #         key_points=[],  # Create empty key points since parsing failed  
+    #         transcript=transcript
+    #     )
         
-        # Add key points
-        for point in key_points:
-            from .models import Decision
-            fallback_summary.key_points.append(Decision(
-                decision=point,
-                assignee='',
-                context='Extracted from partially parsed response'
-            ))
+    #     # Add key points
+    #     for point in key_points:
+    #         from .models import Decision
+    #         fallback_summary.key_points.append(Decision(
+    #             decision=point,
+    #             assignee='',
+    #             context='Extracted from partially parsed response'
+    #         ))
         
-        logger.info("Created enhanced fallback summary with extracted data")
-        return fallback_summary
+    #     logger.info("Created enhanced fallback summary with extracted data")
+    #     return fallback_summary
     
-    def _ensure_model_available(self) -> bool:
-        """Ensure the required model is downloaded and available (uses HTTP API)."""
-        try:
-            # Use the ollama Python client (HTTP API) instead of the binary
-            # This avoids SIP/DYLD issues on macOS when running from a packaged app
-            response = ollama.list()
-            models = getattr(response, 'models', []) or []
-            model_names = [getattr(m, 'model', '') for m in models]
+    # def _ensure_model_available(self) -> bool:
+    #     """Ensure the required model is downloaded and available (uses HTTP API)."""
+    #     try:
+    #         # Use the ollama Python client (HTTP API) instead of the binary
+    #         # This avoids SIP/DYLD issues on macOS when running from a packaged app
+    #         response = ollama.list()
+    #         models = getattr(response, 'models', []) or []
+    #         model_names = [getattr(m, 'model', '') for m in models]
 
-            if self.model_name in model_names:
-                logger.info(f"Model {self.model_name} is already available")
-                return True
+    #         if self.model_name in model_names:
+    #             logger.info(f"Model {self.model_name} is already available")
+    #             return True
 
-            # Model not found, try to pull it
-            logger.info(f"Downloading model {self.model_name}...")
-            try:
-                ollama.pull(self.model_name)
-                logger.info(f"Successfully downloaded model {self.model_name}")
-                return True
-            except Exception as e:
-                logger.error(f"Failed to download model {self.model_name}: {e}")
+    #         # Model not found, try to pull it
+    #         logger.info(f"Downloading model {self.model_name}...")
+    #         try:
+    #             ollama.pull(self.model_name)
+    #             logger.info(f"Successfully downloaded model {self.model_name}")
+    #             return True
+    #         except Exception as e:
+    #             logger.error(f"Failed to download model {self.model_name}: {e}")
 
-            # Try fallback models from supported list
-            fallback_models = ["llama3.2:3b", "gemma3:4b", "qwen3.5:9b", "deepseek-r1:14b"]
-            for fallback in fallback_models:
-                if fallback in model_names:
-                    logger.info(f"Using already-installed fallback model: {fallback}")
-                    self.model_name = fallback
-                    return True
+    #         # Try fallback models from supported list
+    #         fallback_models = ["llama3.2:3b", "gemma3:4b", "qwen3.5:9b", "deepseek-r1:14b"]
+    #         for fallback in fallback_models:
+    #             if fallback in model_names:
+    #                 logger.info(f"Using already-installed fallback model: {fallback}")
+    #                 self.model_name = fallback
+    #                 return True
 
-            for fallback in fallback_models:
-                logger.info(f"Trying fallback model: {fallback}")
-                try:
-                    ollama.pull(fallback)
-                    logger.info(f"Successfully downloaded fallback model {fallback}")
-                    self.model_name = fallback
-                    return True
-                except Exception:
-                    continue
+    #         for fallback in fallback_models:
+    #             logger.info(f"Trying fallback model: {fallback}")
+    #             try:
+    #                 ollama.pull(fallback)
+    #                 logger.info(f"Successfully downloaded fallback model {fallback}")
+    #                 self.model_name = fallback
+    #                 return True
+    #             except Exception:
+    #                 continue
 
-            return False
+    #         return False
 
-        except Exception as e:
-            logger.error(f"Error ensuring model availability: {e}")
-            return False
+    #     except Exception as e:
+    #         logger.error(f"Error ensuring model availability: {e}")
+    #         return False
     
-    def _ensure_ollama_ready(self) -> bool:
-        """Ensure Ollama service is running and model is available."""
-        logger.info("Checking Ollama service...")
+    # def _ensure_ollama_ready(self) -> bool:
+    #     """Ensure Ollama service is running and model is available."""
+    #     logger.info("Checking Ollama service...")
         
-        # Step 1: Check if Ollama is running
+    #     # Step 1: Check if Ollama is running
+    #     if not self._is_ollama_running():
+    #         if not self._start_ollama_service():
+    #             raise Exception("Failed to start Ollama service")
+    #     else:
+    #         logger.info("Ollama service is already running")
+        
+    #     # Step 2: Ensure model is available
+    #     if not self._ensure_model_available():
+    #         raise Exception(f"Failed to ensure model {self.model_name} is available")
+        
+    #     logger.info(f"Ollama ready with model {self.model_name}")
+    #     return True
+        # Note: The above method is commented out because we're now relying on the
+    def _ensure_ollama_ready(self) -> None:
+        """Ensure Ollama service is running. Model availability is handled by the user/admin."""
+        logger.info("Checking if Ollama service is running...")
         if not self._is_ollama_running():
+            logger.info("Ollama is not running, attempting to start it...")
             if not self._start_ollama_service():
                 raise Exception("Failed to start Ollama service")
         else:
             logger.info("Ollama service is already running")
-        
-        # Step 2: Ensure model is available
-        if not self._ensure_model_available():
-            raise Exception(f"Failed to ensure model {self.model_name} is available")
-        
-        logger.info(f"Ollama ready with model {self.model_name}")
-        return True
-        
+            
     def _cloud_chat(self, prompt: str, timeout_seconds: int = 300) -> str:
         """
         Send a chat request via the configured cloud API (OpenAI or Anthropic).

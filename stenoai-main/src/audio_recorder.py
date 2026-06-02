@@ -17,17 +17,17 @@ import json
 
 logger = logging.getLogger(__name__)
 
-# # Global cleanup to prevent resource leaks
-# def cleanup_sounddevice():
-#     """Clean up sounddevice resources on exit"""
-#     try:
-#         if sd is not None:
-#             sd._terminate()
-#     except (AttributeError, RuntimeError, Exception) as e:
-#         # Log but don't raise - this is cleanup code
-#         logger.debug(f"Error during sounddevice cleanup: {e}")
+# Global cleanup to prevent resource leaks
+def cleanup_sounddevice():
+    """Clean up sounddevice resources on exit"""
+    try:
+        if sd is not None:
+            sd._terminate()
+    except (AttributeError, RuntimeError, Exception) as e:
+        # Log but don't raise - this is cleanup code
+        logger.debug(f"Error during sounddevice cleanup: {e}")
 
-# atexit.register(cleanup_sounddevice)
+atexit.register(cleanup_sounddevice)
 
 
 class AudioRecorder:
@@ -131,48 +131,48 @@ class AudioRecorder:
         with self.pause_lock:
             return self.paused
         
-    def _record(self) -> None:
-        """Internal method to handle the recording process."""
-        stream = None
-        try:
-            logger.info(f"Starting audio stream with sample_rate={self.sample_rate}, channels={self.channels}")
-            stream = sd.InputStream(
-                samplerate=self.sample_rate,
-                channels=self.channels,
-                callback=self._audio_callback,
-                blocksize=1024
-            )
-            self.stream = stream  # Store reference for cleanup
-            stream.start()
-            logger.info("Audio stream started successfully")
+    # def _record(self) -> None:
+    #     """Internal method to handle the recording process."""
+    #     stream = None
+    #     try:
+    #         logger.info(f"Starting audio stream with sample_rate={self.sample_rate}, channels={self.channels}")
+    #         stream = sd.InputStream(
+    #             samplerate=self.sample_rate,
+    #             channels=self.channels,
+    #             callback=self._audio_callback,
+    #             blocksize=1024
+    #         )
+    #         self.stream = stream  # Store reference for cleanup
+    #         stream.start()
+    #         logger.info("Audio stream started successfully")
             
-            while self.recording:
-                time.sleep(0.1)
-            logger.info("Recording loop ended")
+    #         while self.recording:
+    #             time.sleep(0.1)
+    #         logger.info("Recording loop ended")
             
-        except Exception as e:
-            logger.error(f"Error during recording: {e}")
-            logger.error(f"Available audio devices: {sd.query_devices()}")
-            self.recording = False
-        finally:
-            # Ensure stream is always properly closed
-            if stream is not None:
-                try:
-                    stream.stop()
-                    stream.close()
-                    logger.info("Audio stream closed")
-                except (AttributeError, RuntimeError, Exception) as e:
-                    logger.warning(f"Error closing audio stream: {e}")
-            self.stream = None
+    #     except Exception as e:
+    #         logger.error(f"Error during recording: {e}")
+    #         logger.error(f"Available audio devices: {sd.query_devices()}")
+    #         self.recording = False
+    #     finally:
+    #         # Ensure stream is always properly closed
+    #         if stream is not None:
+    #             try:
+    #                 stream.stop()
+    #                 stream.close()
+    #                 logger.info("Audio stream closed")
+    #             except (AttributeError, RuntimeError, Exception) as e:
+    #                 logger.warning(f"Error closing audio stream: {e}")
+    #         self.stream = None
             
-    def _audio_callback(self, indata, frames, time, status):
-        """Callback function for audio input stream."""
-        if status:
-            logger.warning(f"Audio callback status: {status}")
-        if self.recording and not self.is_paused():
-            # Thread-safe append to audio_data (skip when paused)
-            with self.audio_lock:
-                self.audio_data.append(indata.copy())
+    # def _audio_callback(self, indata, frames, time, status):
+    #     """Callback function for audio input stream."""
+    #     if status:
+    #         logger.warning(f"Audio callback status: {status}")
+    #     if self.recording and not self.is_paused():
+    #         # Thread-safe append to audio_data (skip when paused)
+    #         with self.audio_lock:
+    #             self.audio_data.append(indata.copy())
             
     def save_recording(self, filepath: Path) -> bool:
         """Save the recorded audio to a WAV file."""
@@ -223,22 +223,22 @@ class AudioRecorder:
             total_frames = sum(len(chunk) for chunk in self.audio_data)
         return total_frames / self.sample_rate
         
-    def is_recording(self) -> bool:
-        """Check if currently recording."""
-        return self.recording
+    # def is_recording(self) -> bool:
+    #     """Check if currently recording."""
+    #     return self.recording
     
-    def __del__(self):
-        """Cleanup resources when instance is destroyed."""
-        try:
-            if self.recording:
-                self.stop_recording()
-            if self.stream:
-                try:
-                    self.stream.stop()
-                    self.stream.close()
-                except (AttributeError, RuntimeError, Exception) as e:
-                    logger.debug(f"Error closing stream in __del__: {e}")
-            if self.recording_thread and self.recording_thread.is_alive():
-                self.recording_thread.join(timeout=1.0)
-        except (AttributeError, RuntimeError, Exception) as e:
-            logger.debug(f"Error in __del__: {e}")
+    # def __del__(self):
+    #     """Cleanup resources when instance is destroyed."""
+    #     try:
+    #         if self.recording:
+    #             self.stop_recording()
+    #         if self.stream:
+    #             try:
+    #                 self.stream.stop()
+    #                 self.stream.close()
+    #             except (AttributeError, RuntimeError, Exception) as e:
+    #                 logger.debug(f"Error closing stream in __del__: {e}")
+    #         if self.recording_thread and self.recording_thread.is_alive():
+    #             self.recording_thread.join(timeout=1.0)
+    #     except (AttributeError, RuntimeError, Exception) as e:
+    #         logger.debug(f"Error in __del__: {e}")
