@@ -10,11 +10,14 @@ Covers:
 """
 
 import math
+import os
 import struct
 import tempfile
 import unittest
 import wave
 from pathlib import Path
+
+import certifi
 
 from src.transcriber import (
     BLEED_JACCARD_THRESHOLD,
@@ -122,6 +125,33 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/sample.m4a':
         similarity = _token_jaccard(mic, system)
         self.assertLess(similarity, BLEED_JACCARD_THRESHOLD)
 
+class TlsBootstrapTests(unittest.TestCase):
+    def setUp(self):
+        self._saved_env = {
+            k: os.environ.get(k)
+            for k in ("SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE")
+        }
+
+    def tearDown(self):
+        for k, v in self._saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def _reimport(self):
+        sys.modules.pop("src.tls_bootstrap", None)
+        return importlib.import_module("src.tls_bootstrap")
+
+    def test_configure_points_ssl_cert_file_at_certifi_bundle(self):
+        os.environ.pop("SSL_CERT_FILE", None)
+        os.environ.pop("REQUESTS_CA_BUNDLE", None)
+
+        self._reimport()
+
+        self.assertEqual(os.environ["SSL_CERT_FILE"], certifi.where())
+        self.assertEqual(os.environ["REQUESTS_CA_BUNDLE"], certifi.where())
+        self.assertTrue(os.path.isfile(os.environ["SSL_CERT_FILE"]))
 
 class FfmpegStderrParseTests(unittest.TestCase):
     STEREO_OPUS = """\
