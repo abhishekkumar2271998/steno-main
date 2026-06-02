@@ -53,21 +53,45 @@ class TokenJaccardTests(unittest.TestCase):
         mic = (
             "popping up I think it was originally Alexandria of liberal groups "
             "liberal opponents to the Muslim Brother liberal secular Egyptians ")
-        
-class TokenJaccardTests(unittest.TestCase):
-    def test_identical_strings_score_one(self):
-        self.assertEqual(_token_jaccard("hello world", "hello world"), 1.0)
 
-    def test_disjoint_strings_score_zero(self):
-        self.assertEqual(
-            _token_jaccard("hi can you hear me", "trump has said many outrageous things"),
-            0.0,
+class FfmpegStderrParseTests(unittest.TestCase):
+    STEREO_OPUS = """\
+Input #0, matroska,webm, from '/tmp/sample.webm':
+  Metadata:
+    encoder         : Chrome
+  Duration: 00:00:28.62, start: -0.007000, bitrate: 128 kb/s
+  Stream #0:0(eng): Audio: opus, 48000 Hz, stereo, fltp (default)
+"""
+    MONO_WAV = """\
+Input #0, wav, from '/tmp/sample.wav':
+  Duration: 00:01:05.40, bitrate: 256 kb/s
+  Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s
+"""
+    SIX_CHANNEL = """\
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/sample.m4a':
+  Duration: 02:34:12.10, start: 0.000000, bitrate: 384 kb/s
+  Stream #0:0: Audio: aac (LC), 4800０ Hz, 6 channels, fltp, 384 kb/s
+"""
+    GIBBERISH = "ffmpeg version 7.1.1\nbuilt with Apple clang...\n"
+
+    def test_parses_stereo(self):
+        self.assertEqual(_parse_channels_from_ffmpeg_stderr(self.STEREO_OPUS), 2)
+
+    def test_parses_mono(self):
+        self.assertEqual(_parse_channels_from_ffmpeg_stderr(self.MONO_WAV), 1)
+
+    def test_parses_six_channel(self):
+        self.assertEqual(_parse_channels_from_ffmpeg_stderr(self.SIX_CHANNEL), 6)
+
+    def test_returns_none_on_no_audio_stream(self):
+        self.assertIsNone(_parse_channels_from_ffmpeg_stderr(self.GIBBERISH))
+
+    def test_parses_short_duration(self):
+        self.assertAlmostEqual(
+            _parse_duration_from_ffmpeg_stderr(self.STEREO_OPUS),
+            28.62,
+            places=2,
         )
-
-    def test_empty_inputs_return_zero(self):
-        self.assertEqual(_token_jaccard("", "anything"), 0.0)
-        self.assertEqual(_token_jaccard("anything", ""), 0.0)
-        self.assertEqual(_token_jaccard("", ""), 0.0)
 
     def test_case_and_whitespace_insensitive(self):
         self.assertEqual(
