@@ -25,7 +25,35 @@ from src.transcriber import (
     _token_jaccard,
 )
 
+class TokenJaccardTests(unittest.TestCase):
+    def test_identical_strings_score_one(self):
+        self.assertEqual(_token_jaccard("hello world", "hello world"), 1.0)
 
+    def test_disjoint_strings_score_zero(self):
+        self.assertEqual(
+            _token_jaccard("hi can you hear me", "trump has said many outrageous things"),
+            0.0,
+        )
+
+    def test_empty_inputs_return_zero(self):
+        self.assertEqual(_token_jaccard("", "anything"), 0.0)
+        self.assertEqual(_token_jaccard("anything", ""), 0.0)
+        self.assertEqual(_token_jaccard("", ""), 0.0)
+
+    def test_case_and_whitespace_insensitive(self):
+        self.assertEqual(
+            _token_jaccard("Hello, World!", "hello world"),
+            1.0,
+        )
+
+    def test_real_bleed_sample_crosses_threshold(self):
+        # Lifted from the actual recording that triggered this fix: the
+        # mic captures the user plus YouTube echo, the system loopback
+        # captures the same YouTube cleanly. Sets share most words.
+        mic = (
+            "popping up I think it was originally Alexandria of liberal groups "
+            "liberal opponents to the Muslim Brother liberal secular Egyptians ")
+        
 class TokenJaccardTests(unittest.TestCase):
     def test_identical_strings_score_one(self):
         self.assertEqual(_token_jaccard("hello world", "hello world"), 1.0)
