@@ -17,7 +17,19 @@ class IsInstalledTests(unittest.TestCase):
             (Path(tmp_dir) / "ggml-small.bin").write_bytes(b"x")
             with patch.object(whisper_models, "get_models_dir", return_value=Path(tmp_dir)):
                 self.assertTrue(whisper_models.is_installed("small"))
+class GetModelPathTests(unittest.TestCase):
+    def test_returns_path_to_ggml_file(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            (Path(tmp_dir) / "ggml-small.bin").write_bytes(b"x")
+            with patch.object(whisper_models, "get_models_dir", return_value=Path(tmp_dir)):
+                path = whisper_models.get_model_path("small")
+                self.assertEqual(path, Path(tmp_dir) / "ggml-small.bin")
 
+    def test_raises_when_ggml_file_missing(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with patch.object(whisper_models, "get_models_dir", return_value=Path(tmp_dir)):
+                with self.assertRaises(FileNotFoundError):
+                    whisper_models.get_model_path("small")
 
 class DownloadWithProgressTests(unittest.TestCase):
     def test_rejects_unknown_model_name(self):
