@@ -225,14 +225,14 @@ class AudioRecorder:
             audio_bytes = (audio_array * 32767).astype(np.int16).tobytes()
             return audio_bytes
     
-    def get_recording_duration(self) -> float:
-        """Get the duration of the current recording in seconds."""
-        # Thread-safe read of audio data
-        with self.audio_lock:
-            if not self.audio_data:
-                return 0.0
-            total_frames = sum(len(chunk) for chunk in self.audio_data)
-        return total_frames / self.sample_rate
+    # def get_recording_duration(self) -> float:
+    #     """Get the duration of the current recording in seconds."""
+    #     # Thread-safe read of audio data
+    #     with self.audio_lock:
+    #         if not self.audio_data:
+    #             return 0.0
+    #         total_frames = sum(len(chunk) for chunk in self.audio_data)
+    #     return total_frames / self.sample_rate
         
     # def is_recording(self) -> bool:
     #     """Check if currently recording."""
