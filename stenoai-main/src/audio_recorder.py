@@ -213,7 +213,18 @@ class AudioRecorder:
         except Exception as e:
             logger.error(f"Error saving audio: {e}")
             return False
-            
+    def get_recording(self) -> Optional[bytes]:
+        """Get the recorded audio data as bytes."""
+        with self.audio_lock:
+            if not self.audio_data:
+                logger.warning("No audio data available")
+                return None
+            # Convert list of numpy arrays to single array
+            audio_array = np.concatenate(self.audio_data, axis=0)
+            # Convert float32 to int16 bytes
+            audio_bytes = (audio_array * 32767).astype(np.int16).tobytes()
+            return audio_bytes
+    
     def get_recording_duration(self) -> float:
         """Get the duration of the current recording in seconds."""
         # Thread-safe read of audio data
